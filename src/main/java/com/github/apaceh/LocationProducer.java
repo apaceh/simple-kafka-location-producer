@@ -9,6 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
@@ -19,55 +22,61 @@ public class LocationProducer {
         // define circle location
         RandomLatLngUtils.Solution solution = new RandomLatLngUtils.Solution(10, 20, 30);
 
-        String bootstrapServers = "172.18.46.11:9092,172.18.46.12:9092,172.18.46.13:9092";
-        String topic = "users-location";
+        try (InputStream input = new FileInputStream("C:\\Users\\Netizen\\Documents\\ALFI\\learn-kafka\\TASK 2 Code\\config\\location-producer.properties")) {
 
-        //create Producer properties
-        Properties properties = new Properties();
-        properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+//            String bootstrapServers = "172.18.46.11:9092,172.18.46.12:9092,172.18.46.13:9092";
+            String topic = "users-location";
 
-        // create the producer
-        KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
+            //create Producer properties
+            Properties properties = new Properties();
+            properties.load(input);
+//            properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+//            properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+//            properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        for (int i = 0; i < 10; i++) {
-            List coordinate = solution.randPoint();
+            // create the producer
+            KafkaProducer<String, String> producer = new KafkaProducer<>(properties);
 
-            int id = i + 1;
-            String value = new JSONObject()
-                    .put("id", 1)
-                    .put("user_id", id)
-                    .put("lat", coordinate.getItem(0))
-                    .put("lng", coordinate.getItem(1))
-                    .toString();
+//            for (int i = 0; i < 10; i++) {
+                List coordinate = solution.randPoint();
 
-            String key = "id_" + id;
+                int id = 4;
+                String value = new JSONObject()
+                        .put("id", 1)
+                        .put("user_id", id)
+                        .put("lat", coordinate.getItem(0))
+                        .put("lng", coordinate.getItem(1))
+                        .toString();
 
-            ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, key, value);
+                String key = "id_" + id;
 
-            logger.info("Key: " + key);
+                ProducerRecord<String, String> producerRecord = new ProducerRecord<>(topic, key, value);
 
-            // send data
-            producer.send(producerRecord, (recordMetadata, e) -> {
-                // executes every time a record is successfully sent or an exception is thrown
-                if (e == null) {
-                    // the record was successfully sent
-                    logger.info("Received new metadata. \n" +
-                            "Topic: " + recordMetadata.topic() + "\n" +
-                            "Partition: " + recordMetadata.partition() + "\n" +
-                            "Offset: " + recordMetadata.offset() + "\n" +
-                            "Timestamp: " + recordMetadata.timestamp());
-                } else {
-                    logger.error("Error while producing.", e);
-                }
-            }).get(); // block the .send to make it synchronous
+                logger.info("Key: " + key);
+
+                // send data
+                producer.send(producerRecord, (recordMetadata, e) -> {
+                    // executes every time a record is successfully sent or an exception is thrown
+                    if (e == null) {
+                        // the record was successfully sent
+                        logger.info("Received new metadata. \n" +
+                                "Topic: " + recordMetadata.topic() + "\n" +
+                                "Partition: " + recordMetadata.partition() + "\n" +
+                                "Offset: " + recordMetadata.offset() + "\n" +
+                                "Timestamp: " + recordMetadata.timestamp());
+                    } else {
+                        logger.error("Error while producing.", e);
+                    }
+                }).get(); // block the .send to make it synchronous
+//            }
+
+            // flush data
+            producer.flush();
+            // flush and close producer
+            producer.close();
+        } catch (IOException ex) {
+            ex.printStackTrace();
         }
-
-        // flush data
-        producer.flush();
-        // flush and close producer
-        producer.close();
     }
 }
 
